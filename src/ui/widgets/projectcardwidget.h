@@ -18,6 +18,7 @@ public:
 signals:
     void clicked(qint64 projectId);
     void deleteRequested(qint64 projectId);
+    void editRequested(qint64 projectId);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;

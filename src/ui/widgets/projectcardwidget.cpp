@@ -67,6 +67,12 @@ void ProjectCardWidget::buildUi() {
     startBtn_->setCursor(Qt::PointingHandCursor);
     connect(startBtn_, &QPushButton::clicked, this, [this]() { emit clicked(project_.id); });
 
+    auto* editBtn = new QPushButton("✎", this);
+    editBtn->setObjectName("cardEditBtn");
+    editBtn->setFixedSize(28, 28);
+    editBtn->setCursor(Qt::PointingHandCursor);
+    connect(editBtn, &QPushButton::clicked, this, [this]() { emit editRequested(project_.id); });
+
     deleteBtn_ = new QPushButton("✕", this);
     deleteBtn_->setObjectName("cardDeleteBtn");
     deleteBtn_->setFixedSize(28, 28);
@@ -75,6 +81,7 @@ void ProjectCardWidget::buildUi() {
 
     bottomRow->addWidget(startBtn_);
     bottomRow->addStretch();
+    bottomRow->addWidget(editBtn);
     bottomRow->addWidget(deleteBtn_);
     root->addLayout(bottomRow);
 }

@@ -595,6 +595,7 @@ void MainWindow::loadProjects() {
         card->setTodayDuration(db_->totalSecsToday(p.id));
         connect(card, &ProjectCardWidget::clicked,         this, &MainWindow::onProjectClicked);
         connect(card, &ProjectCardWidget::deleteRequested, this, &MainWindow::onDeleteProject);
+        connect(card, &ProjectCardWidget::editRequested,   this, &MainWindow::onEditProject);
         layout->addWidget(card);
         cards_.append(card);
     }
@@ -651,6 +652,26 @@ void MainWindow::onDeleteProject(qint64 projectId) {
         timer_->stopCurrent();
     db_->deleteProject(projectId);
     loadProjects();
+}
+
+void MainWindow::onEditProject(qint64 projectId) {
+    Project p;
+    for (const auto& proj : db_->allProjects())
+        if (proj.id == projectId) { p = proj; break; }
+    if (p.id == 0) return;
+
+    AddProjectDialog dlg(p, this);
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    p.name        = dlg.projectName();
+    p.color       = dlg.projectColor();
+    p.description = dlg.projectDescription();
+    db_->updateProject(p);
+    loadProjects();
+
+    // Update timer display if this project is active
+    if (timer_->isRunning() && timer_->activeProjectId() == projectId)
+        timerDisplay_->setProjectName(p.name);
 }
 
 void MainWindow::onSessionStarted(qint64 projectId, qint64) {

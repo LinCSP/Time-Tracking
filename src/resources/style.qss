@@ -168,6 +168,20 @@ QPushButton#cardStartBtn[active="true"] {
     border: 1px solid #69DB7C;
 }
 
+/* Card edit button */
+QPushButton#cardEditBtn {
+    background: transparent;
+    border: none;
+    color: #444460;
+    font-size: 15px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+QPushButton#cardEditBtn:hover {
+    color: #4DABF7;
+    background-color: rgba(77, 171, 247, 0.12);
+}
+
 /* Card delete button */
 QPushButton#cardDeleteBtn {
     background: transparent;

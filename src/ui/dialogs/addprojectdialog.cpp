@@ -10,19 +10,31 @@ static const QStringList kColors = {
     "#CC5DE8", "#F06595", "#20C997", "#FFD43B"
 };
 
-AddProjectDialog::AddProjectDialog(QWidget* parent) : QDialog(parent) {
+AddProjectDialog::AddProjectDialog(QWidget* parent)
+    : QDialog(parent) {
     setWindowTitle(tr("New Project"));
     setModal(true);
     setFixedWidth(380);
-    buildUi();
+    buildUi(false);
 }
 
-void AddProjectDialog::buildUi() {
+AddProjectDialog::AddProjectDialog(const Project& project, QWidget* parent)
+    : QDialog(parent) {
+    setWindowTitle(tr("Edit Project"));
+    setModal(true);
+    setFixedWidth(380);
+    selectedColor_ = project.color;
+    buildUi(true);
+    nameEdit_->setText(project.name);
+    descEdit_->setText(project.description);
+}
+
+void AddProjectDialog::buildUi(bool editMode) {
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(24, 24, 24, 24);
     root->setSpacing(16);
 
-    auto* titleLabel = new QLabel(tr("New Project"), this);
+    auto* titleLabel = new QLabel(editMode ? tr("Edit Project") : tr("New Project"), this);
     titleLabel->setObjectName("dialogTitle");
     root->addWidget(titleLabel);
 
@@ -73,7 +85,7 @@ void AddProjectDialog::buildUi() {
     cancelBtn->setMinimumHeight(36);
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
 
-    auto* acceptBtn = new QPushButton(tr("Create"), this);
+    auto* acceptBtn = new QPushButton(editMode ? tr("Save") : tr("Create"), this);
     acceptBtn->setObjectName("dialogAccept");
     acceptBtn->setMinimumHeight(36);
     connect(acceptBtn, &QPushButton::clicked, this, [this]() {

@@ -33,6 +33,7 @@ protected:
 private slots:
     void onProjectClicked(qint64 projectId);
     void onDeleteProject(qint64 projectId);
+    void onEditProject(qint64 projectId);
     void onStopClicked();
     void onAddProjectClicked();
     void onSessionStarted(qint64 projectId, qint64 entryId);
