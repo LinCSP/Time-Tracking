@@ -13,6 +13,7 @@ class QWidget;
 class QPushButton;
 class QLabel;
 class QFrame;
+class QComboBox;
 class QTranslator;
 
 class MainWindow : public QMainWindow {
@@ -35,7 +36,7 @@ private slots:
     void onTimerTick(qint64 elapsedSecs);
     void switchToProjectsPage();
     void switchToHistoryPage();
-    void toggleLanguage();
+    void onLanguageChanged(int index);
 
 private:
     void buildUi();
@@ -47,7 +48,6 @@ private:
     Database*         db_;
     TimerController*  timer_;
     QTranslator*      translator_{nullptr};
-    bool              isRussian_{false};
 
     QFrame*              headerBar_;
     QStackedWidget*      stack_;
@@ -56,7 +56,7 @@ private:
     QPushButton*         stopBtn_;
     QPushButton*         navProjects_;
     QPushButton*         navHistory_;
-    QPushButton*         langBtn_;
+    QComboBox*           langCombo_;
     QPushButton*         addBtn_;
     QLabel*              emptyLabel1_{nullptr};
     QLabel*              emptyLabel2_{nullptr};

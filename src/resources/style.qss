@@ -76,20 +76,38 @@ QPushButton#navBtn:hover:!checked {
     background: rgba(255,255,255,0.04);
 }
 
-/* ── Language toggle button ──────────────────────────────────────────────── */
-QPushButton#langBtn {
+/* ── Language combo in header ────────────────────────────────────────────── */
+QComboBox#langCombo {
     background-color: transparent;
-    color: #606080;
+    color: #909296;
     border: 1px solid #2E2E48;
     border-radius: 5px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    font-size: 12px;
+    min-width: 80px;
 }
-QPushButton#langBtn:hover {
+QComboBox#langCombo:hover {
     background-color: #252538;
     color: #C1C2C5;
     border-color: #4DABF7;
+}
+QComboBox#langCombo::drop-down {
+    border: none;
+    width: 16px;
+}
+QComboBox#langCombo::down-arrow {
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-top: 4px solid #606080;
+    width: 0; height: 0;
+    margin-right: 4px;
+}
+QComboBox#langCombo QAbstractItemView {
+    background-color: #252538;
+    border: 1px solid #2E2E48;
+    selection-background-color: #2D2D50;
+    color: #C1C2C5;
+    outline: none;
 }
 
 /* ── Stop button ─────────────────────────────────────────────────────────── */

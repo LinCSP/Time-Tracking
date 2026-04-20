@@ -6,6 +6,7 @@
 #include "widgets/sessionhistorywidget.h"
 #include "widgets/timerdisplay.h"
 #include <QApplication>
+#include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -14,6 +15,7 @@
 #include <QScrollArea>
 #include <QStackedWidget>
 #include <QStyle>
+#include <QSettings>
 #include <QTranslator>
 #include <QVBoxLayout>
 #include <QWindow>
@@ -82,6 +84,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     buildUi();
     loadProjects();
 
+    // Restore saved language (blockSignals to avoid double-applying)
+    QSettings cfg;
+    QString savedLang = cfg.value("language", "en").toString();
+    int idx = langCombo_->findData(savedLang);
+    if (idx > 0) {
+        langCombo_->blockSignals(true);
+        langCombo_->setCurrentIndex(idx);
+        langCombo_->blockSignals(false);
+        onLanguageChanged(idx);
+    }
+
     if (timer_->isRunning()) {
         qint64 pid = timer_->activeProjectId();
         if (auto* card = cardForProject(pid)) card->setActive(true);
@@ -99,20 +112,28 @@ MainWindow::~MainWindow() {
 
 // ── Language ──────────────────────────────────────────────────────────────────
 
-void MainWindow::toggleLanguage() {
-    if (!translator_) translator_ = new QTranslator(qApp);
+void MainWindow::onLanguageChanged(int index) {
+    QString lang = langCombo_->itemData(index).toString();
 
-    if (!isRussian_) {
-        if (translator_->load(":/translations/timetracker_ru.qm")) {
-            qApp->installTranslator(translator_);
-            isRussian_ = true;
-            langBtn_->setText("EN");
-        }
-    } else {
+    if (translator_) {
         qApp->removeTranslator(translator_);
-        isRussian_ = false;
-        langBtn_->setText("RU");
+        delete translator_;
+        translator_ = nullptr;
     }
+
+    if (lang != "en") {
+        translator_ = new QTranslator(qApp);
+        QString path = QString(":/translations/timetracker_%1.qm").arg(lang);
+        if (translator_->load(path)) {
+            qApp->installTranslator(translator_);
+        } else {
+            delete translator_;
+            translator_ = nullptr;
+        }
+    }
+
+    QSettings cfg;
+    cfg.setValue("language", lang);
 }
 
 void MainWindow::changeEvent(QEvent* event) {
@@ -215,13 +236,16 @@ void MainWindow::buildUi() {
     hl->addWidget(stopBtn_);
     hl->addSpacing(12);
 
-    // Language toggle
-    langBtn_ = new QPushButton("RU", headerBar_);
-    langBtn_->setObjectName("langBtn");
-    langBtn_->setFixedSize(36, 26);
-    langBtn_->setCursor(Qt::PointingHandCursor);
-    connect(langBtn_, &QPushButton::clicked, this, &MainWindow::toggleLanguage);
-    hl->addWidget(langBtn_);
+    // Language selector
+    langCombo_ = new QComboBox(headerBar_);
+    langCombo_->setObjectName("langCombo");
+    langCombo_->setCursor(Qt::PointingHandCursor);
+    langCombo_->addItem("English", "en");
+    langCombo_->addItem("Русский", "ru");
+    langCombo_->setFixedHeight(28);
+    langCombo_->setMinimumWidth(90);
+    connect(langCombo_, &QComboBox::currentIndexChanged, this, &MainWindow::onLanguageChanged);
+    hl->addWidget(langCombo_);
     hl->addSpacing(12);
 
     // Window controls
