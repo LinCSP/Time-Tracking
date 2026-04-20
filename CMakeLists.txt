@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Sql LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Network LinguistTools)
 
 set(SOURCES
     src/main.cpp
@@ -34,6 +34,7 @@ target_include_directories(time_tracking PRIVATE src)
 target_link_libraries(time_tracking PRIVATE
     Qt6::Widgets
     Qt6::Sql
+    Qt6::Network
 )
 
 qt6_add_translations(time_tracking

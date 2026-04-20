@@ -1,14 +1,31 @@
 #include "ui/mainwindow.h"
 #include <QApplication>
 #include <QFile>
+#include <QLocalServer>
+#include <QLocalSocket>
 #include <QPalette>
 #include <QStyleFactory>
+
+static const QString kSingleInstanceKey = "TimeTracker_SingleInstance";
 
 int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName("TimeTracker");
     app.setOrganizationName("alex");
     app.setApplicationVersion("0.1.0");
+
+    // Single-instance guard: try to connect to an already-running instance
+    {
+        QLocalSocket probe;
+        probe.connectToServer(kSingleInstanceKey);
+        if (probe.waitForConnected(300)) {
+            probe.disconnectFromServer();
+            return 0;
+        }
+    }
+    QLocalServer singleInstanceServer;
+    QLocalServer::removeServer(kSingleInstanceKey);
+    singleInstanceServer.listen(kSingleInstanceKey);
 
     app.setStyle(QStyleFactory::create("Fusion"));
 
