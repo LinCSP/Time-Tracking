@@ -1,0 +1,232 @@
+# This file is used to ignore files which are generated
+# ----------------------------------------------------------------------------
+
+.claude
+*~
+*.autosave
+*.a
+*.core
+*.moc
+*.o
+*.obj
+*.orig
+*.rej
+*.so
+*.so.*
+*_pch.h.cpp
+*_resource.rc
+*.qm
+.#*
+*.*#
+core
+!core/
+tags
+.DS_Store
+.directory
+*.debug
+Makefile*
+*.prl
+*.app
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+Thumbs.db
+*.res
+*.rc
+/.qmake.cache
+/.qmake.stash
+
+# qtcreator generated files
+*.pro.user*
+*.qbs.user*
+CMakeLists.txt.user*
+
+# xemacs temporary files
+*.flc
+
+# Vim temporary files
+.*.swp
+
+# Visual Studio generated files
+*.ib_pdb_index
+*.idb
+*.ilk
+*.pdb
+*.sln
+*.suo
+*.vcproj
+*vcproj.*.*.user
+*.ncb
+*.sdf
+*.opensdf
+*.vcxproj
+*vcxproj.*
+
+# MinGW generated files
+*.Debug
+*.Release
+
+# Python byte code
+*.pyc
+
+# Binaries
+# --------
+*.dll
+*.exe
+
+# Directories with generated files
+.moc/
+.obj/
+.pch/
+.rcc/
+.uic/
+/build*/
+cmake-build-*/
+compile_commands.json
+
+# Runtime data (OsEngine)
+data/engine/
+data/logs/
+
+# Secrets
+*.key
+*.pem
+.env
+
+# FXCM ForexConnect распакованная библиотека (храним только архив)
+/fxcm/ForexConnectAPI-*/
+
+# Trade Optimizer специфичные папки
+# ===================================
+
+# Данные
+/data/raw/
+/data/processed/
+/data/training/
+/data/validation/
+
+# Модели (большие файлы, хранить отдельно)
+/models/*.pt
+/models/*.pth
+/models/*.onnx
+
+# Логи
+/logs/
+*.log
+
+# Python
+# ========
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+Scripts/
+Lib/
+Include/
+pyvenv.cfg
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IPython
+profile_default/
+ipython_config.py
+
+# PyTorch & ML specific
+*.pth.tar
+events.out.tfevents.*
+runs/
+tensorboard_logs/
+wandb/
+mlruns/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# IDE специфичные файлы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Конфигурации с чувствительными данными
+config/credentials.json
+config/*.secret
+
+# Игнорировать виртуальное окружение Python
+/venv/
+/scripts/venv/
+
+# Игнорировать скачанные зависимости
+/scripts/.cache/
+
+# Игнорировать временные файлы обучения
+/scripts/training/.cache/
+/scripts/models/__pycache__/
+/scripts/utils/__pycache__/
+
+# Сохранять структуру папок но не содержимое
+checkpoints/*
+!checkpoints/.gitkeep
+models/*
+!models/.gitkeep
+!models/README.md
+
