@@ -6,16 +6,22 @@
 #include "widgets/sessionhistorywidget.h"
 #include "widgets/timerdisplay.h"
 #include <QApplication>
+#include <QCheckBox>
+#include <QCloseEvent>
 #include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMenu>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSettings>
 #include <QStackedWidget>
 #include <QStyle>
-#include <QSettings>
+#include <QSystemTrayIcon>
+#include <QTimer>
 #include <QTranslator>
 #include <QVBoxLayout>
 #include <QWindow>
@@ -68,6 +74,26 @@ private:
     int hSpace_, vSpace_;
 };
 
+// ── Tray icon (painted clock) ─────────────────────────────────────────────────
+static QIcon createTrayIcon(bool active = false) {
+    QPixmap pm(32, 32);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing);
+    QColor accent = active ? QColor("#69DB7C") : QColor("#4DABF7");
+    p.setPen(QPen(accent, 2.5));
+    p.setBrush(QColor("#1E1E2E"));
+    p.drawEllipse(2, 2, 28, 28);
+    p.setPen(QPen(QColor("#C1C2C5"), 2, Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(16, 16, 16, 9);
+    p.setPen(QPen(accent, 2, Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(16, 16, 22, 16);
+    p.setPen(Qt::NoPen);
+    p.setBrush(accent);
+    p.drawEllipse(14, 14, 4, 4);
+    return QIcon(pm);
+}
+
 // ── MainWindow ───────────────────────────────────────────────────────────────
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
@@ -77,15 +103,22 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     db_->open();
     timer_ = new TimerController(db_, this);
 
+    // Load settings before buildUi so controls get correct initial state
+    QSettings cfg;
+    minimizeToTray_ = cfg.value("minimizeToTray", false).toBool();
+    int tzOffset    = cfg.value("timezoneOffsetSecs", 3 * 3600).toInt();
+    db_->setTimezoneOffsetSecs(tzOffset);
+    historyWidget_  = nullptr; // built in buildUi
+
     connect(timer_, &TimerController::sessionStarted, this, &MainWindow::onSessionStarted);
     connect(timer_, &TimerController::sessionStopped, this, &MainWindow::onSessionStopped);
     connect(timer_, &TimerController::tick,           this, &MainWindow::onTimerTick);
 
     buildUi();
     loadProjects();
+    setupTray();
 
-    // Restore saved language (blockSignals to avoid double-applying)
-    QSettings cfg;
+    // Restore language
     QString savedLang = cfg.value("language", "en").toString();
     int idx = langCombo_->findData(savedLang);
     if (idx > 0) {
@@ -94,6 +127,19 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         langCombo_->blockSignals(false);
         onLanguageChanged(idx);
     }
+
+    // Restore timezone combo selection
+    if (tzCombo_) {
+        int tzIdx = tzCombo_->findData(tzOffset);
+        if (tzIdx >= 0) {
+            tzCombo_->blockSignals(true);
+            tzCombo_->setCurrentIndex(tzIdx);
+            tzCombo_->blockSignals(false);
+        }
+    }
+
+    if (historyWidget_)
+        historyWidget_->setTimezoneOffsetSecs(tzOffset);
 
     if (timer_->isRunning()) {
         qint64 pid = timer_->activeProjectId();
@@ -134,21 +180,41 @@ void MainWindow::onLanguageChanged(int index) {
 
     QSettings cfg;
     cfg.setValue("language", lang);
+    updateTrayMenu();
 }
 
 void MainWindow::changeEvent(QEvent* event) {
-    if (event->type() == QEvent::LanguageChange)
+    if (event->type() == QEvent::LanguageChange) {
         retranslateUi();
+    } else if (event->type() == QEvent::WindowStateChange) {
+        if ((windowState() & Qt::WindowMinimized) && minimizeToTray_ && tray_)
+            QTimer::singleShot(0, this, &QWidget::hide);
+    }
     QMainWindow::changeEvent(event);
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+    if (!forceQuit_ && minimizeToTray_ && tray_) {
+        hide();
+        event->ignore();
+    } else {
+        event->accept();
+    }
 }
 
 void MainWindow::retranslateUi() {
     navProjects_->setText(tr("Projects"));
     navHistory_->setText(tr("History"));
+    navSettings_->setText(tr("Settings"));
     stopBtn_->setText(tr("■  Stop"));
     addBtn_->setText(tr("+ New Project"));
     if (emptyLabel1_) emptyLabel1_->setText(tr("No projects"));
     if (emptyLabel2_) emptyLabel2_->setText(tr("Click '+ New Project' to get started"));
+    if (settingsTitleLabel_)    settingsTitleLabel_->setText(tr("Settings"));
+    if (settingsBehaviorLabel_) settingsBehaviorLabel_->setText(tr("BEHAVIOR"));
+    if (minimizeToTrayCheck_)   minimizeToTrayCheck_->setText(tr("Minimize to system tray"));
+    if (settingsTzLabel_)       settingsTzLabel_->setText(tr("TIMEZONE"));
+    updateTrayMenu();
 }
 
 // ── Drag to move ──────────────────────────────────────────────────────────────
@@ -218,8 +284,15 @@ void MainWindow::buildUi() {
     navHistory_->setCursor(Qt::PointingHandCursor);
     connect(navHistory_, &QPushButton::clicked, this, &MainWindow::switchToHistoryPage);
 
+    navSettings_ = new QPushButton(tr("Settings"), headerBar_);
+    navSettings_->setObjectName("navBtn");
+    navSettings_->setCheckable(true);
+    navSettings_->setCursor(Qt::PointingHandCursor);
+    connect(navSettings_, &QPushButton::clicked, this, &MainWindow::switchToSettingsPage);
+
     hl->addWidget(navProjects_);
     hl->addWidget(navHistory_);
+    hl->addWidget(navSettings_);
     hl->addStretch();
 
     timerDisplay_ = new TimerDisplay(headerBar_);
@@ -236,7 +309,6 @@ void MainWindow::buildUi() {
     hl->addWidget(stopBtn_);
     hl->addSpacing(12);
 
-    // Language selector
     langCombo_ = new QComboBox(headerBar_);
     langCombo_->setObjectName("langCombo");
     langCombo_->setCursor(Qt::PointingHandCursor);
@@ -248,7 +320,6 @@ void MainWindow::buildUi() {
     hl->addWidget(langCombo_);
     hl->addSpacing(12);
 
-    // Window controls
     auto makeWinBtn = [&](const char* name, const QString& color) {
         auto* btn = new QPushButton("", headerBar_);
         btn->setObjectName(name);
@@ -266,7 +337,10 @@ void MainWindow::buildUi() {
     connect(winClose, &QPushButton::clicked, this, &QMainWindow::close);
 
     auto* winMin = makeWinBtn("winMinimize", "#FEBC2E");
-    connect(winMin, &QPushButton::clicked, this, &QMainWindow::showMinimized);
+    connect(winMin, &QPushButton::clicked, this, [this]() {
+        if (minimizeToTray_ && tray_) hide();
+        else showMinimized();
+    });
 
     auto* winMax = makeWinBtn("winMaximize", "#28C840");
     connect(winMax, &QPushButton::clicked, this, [this]() {
@@ -298,7 +372,7 @@ void MainWindow::buildUi() {
     projLayout->setContentsMargins(0, 0, 0, 0);
     projLayout->setSpacing(0);
 
-    auto* toolbar  = new QWidget(projectsPage);
+    auto* toolbar = new QWidget(projectsPage);
     toolbar->setObjectName("toolbarRow");
     auto* tbl = new QHBoxLayout(toolbar);
     tbl->setContentsMargins(16, 8, 16, 8);
@@ -331,6 +405,174 @@ void MainWindow::buildUi() {
     // Page 1 — History
     historyWidget_ = new SessionHistoryWidget(db_, this);
     stack_->addWidget(historyWidget_);
+
+    // Page 2 — Settings
+    auto* settingsPage = new QWidget();
+    settingsPage->setObjectName("settingsPage");
+    auto* sl = new QVBoxLayout(settingsPage);
+    sl->setContentsMargins(32, 28, 32, 28);
+    sl->setAlignment(Qt::AlignTop);
+    sl->setSpacing(0);
+
+    settingsTitleLabel_ = new QLabel(tr("Settings"), settingsPage);
+    settingsTitleLabel_->setObjectName("settingsTitle");
+    sl->addWidget(settingsTitleLabel_);
+    sl->addSpacing(28);
+
+    // Behavior section
+    settingsBehaviorLabel_ = new QLabel(tr("BEHAVIOR"), settingsPage);
+    settingsBehaviorLabel_->setObjectName("settingsSectionLabel");
+    sl->addWidget(settingsBehaviorLabel_);
+
+    auto* behSep = new QFrame(settingsPage);
+    behSep->setFrameShape(QFrame::HLine);
+    behSep->setObjectName("settingsSep");
+    sl->addWidget(behSep);
+    sl->addSpacing(14);
+
+    minimizeToTrayCheck_ = new QCheckBox(tr("Minimize to system tray"), settingsPage);
+    minimizeToTrayCheck_->setObjectName("settingsCheck");
+    minimizeToTrayCheck_->setChecked(minimizeToTray_);
+    connect(minimizeToTrayCheck_, &QCheckBox::toggled, this, [this](bool checked) {
+        minimizeToTray_ = checked;
+        QSettings cfg;
+        cfg.setValue("minimizeToTray", checked);
+    });
+    sl->addWidget(minimizeToTrayCheck_);
+    sl->addSpacing(28);
+
+    // Timezone section
+    settingsTzLabel_ = new QLabel(tr("TIMEZONE"), settingsPage);
+    settingsTzLabel_->setObjectName("settingsSectionLabel");
+    sl->addWidget(settingsTzLabel_);
+
+    auto* tzSep = new QFrame(settingsPage);
+    tzSep->setFrameShape(QFrame::HLine);
+    tzSep->setObjectName("settingsSep");
+    sl->addWidget(tzSep);
+    sl->addSpacing(14);
+
+    auto* tzRow = new QHBoxLayout();
+    tzRow->setSpacing(12);
+    tzRow->setContentsMargins(0, 0, 0, 0);
+
+    tzCombo_ = new QComboBox(settingsPage);
+    tzCombo_->setObjectName("tzCombo");
+    tzCombo_->setFixedWidth(140);
+    for (int h = -12; h <= 14; ++h) {
+        int secs = h * 3600;
+        QString label = (h >= 0) ? QString("UTC +%1").arg(h) : QString("UTC %1").arg(h);
+        tzCombo_->addItem(label, secs);
+    }
+    // Default to UTC+3
+    int defIdx = tzCombo_->findData(3 * 3600);
+    if (defIdx >= 0) tzCombo_->setCurrentIndex(defIdx);
+
+    connect(tzCombo_, &QComboBox::currentIndexChanged, this, [this](int) {
+        int secs = tzCombo_->currentData().toInt();
+        db_->setTimezoneOffsetSecs(secs);
+        QSettings cfg;
+        cfg.setValue("timezoneOffsetSecs", secs);
+        refreshCardDurations();
+        if (historyWidget_) {
+            historyWidget_->setTimezoneOffsetSecs(secs);
+            if (stack_->currentIndex() == 1) historyWidget_->refresh();
+        }
+    });
+
+    tzRow->addWidget(tzCombo_);
+    tzRow->addStretch();
+    sl->addLayout(tzRow);
+    sl->addStretch();
+
+    stack_->addWidget(settingsPage);
+}
+
+// ── Tray ─────────────────────────────────────────────────────────────────────
+
+void MainWindow::setupTray() {
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        if (minimizeToTrayCheck_) minimizeToTrayCheck_->setEnabled(false);
+        return;
+    }
+    tray_     = new QSystemTrayIcon(createTrayIcon(), this);
+    trayMenu_ = new QMenu(this);
+    tray_->setContextMenu(trayMenu_);
+    tray_->setToolTip("Time Tracker");
+    connect(tray_, &QSystemTrayIcon::activated, this, &MainWindow::onTrayActivated);
+    updateTrayMenu();
+    tray_->show();
+}
+
+void MainWindow::updateTrayMenu() {
+    if (!trayMenu_) return;
+    trayMenu_->clear();
+
+    // Status line
+    if (timer_->isRunning()) {
+        qint64  pid  = timer_->activeProjectId();
+        QString name;
+        for (const auto& p : db_->allProjects())
+            if (p.id == pid) { name = p.name; break; }
+        auto* act = trayMenu_->addAction("● " + name);
+        QFont f = act->font(); f.setBold(true); act->setFont(f);
+        act->setEnabled(false);
+        // Update tray icon to green
+        if (tray_) tray_->setIcon(createTrayIcon(true));
+    } else {
+        trayMenu_->addAction(tr("No active project"))->setEnabled(false);
+        if (tray_) tray_->setIcon(createTrayIcon(false));
+    }
+
+    trayMenu_->addSeparator();
+
+    // Project list
+    auto projects = db_->allProjects();
+    for (const auto& p : projects) {
+        auto* act = trayMenu_->addAction(p.name);
+        act->setCheckable(true);
+        act->setChecked(timer_->isRunning() && timer_->activeProjectId() == p.id);
+        connect(act, &QAction::triggered, this, [this, id = p.id]() {
+            restoreWindow();
+            timer_->startProject(id);
+        });
+    }
+
+    if (timer_->isRunning()) {
+        trayMenu_->addSeparator();
+        auto* stopAct = trayMenu_->addAction(tr("■  Stop"));
+        connect(stopAct, &QAction::triggered, timer_, &TimerController::stopCurrent);
+    }
+
+    trayMenu_->addSeparator();
+
+    auto* showHideAct = trayMenu_->addAction(isVisible() ? tr("Hide window") : tr("Show window"));
+    connect(showHideAct, &QAction::triggered, this, [this]() {
+        if (isVisible() && !isMinimized()) hide();
+        else restoreWindow();
+    });
+
+    trayMenu_->addSeparator();
+
+    auto* quitAct = trayMenu_->addAction(tr("Quit"));
+    connect(quitAct, &QAction::triggered, this, [this]() {
+        forceQuit_ = true;
+        QApplication::quit();
+    });
+}
+
+void MainWindow::onTrayActivated(QSystemTrayIcon::ActivationReason reason) {
+    if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
+        if (isVisible() && !isMinimized()) hide();
+        else restoreWindow();
+    }
+}
+
+void MainWindow::restoreWindow() {
+    show();
+    setWindowState(windowState() & ~Qt::WindowMinimized);
+    raise();
+    activateWindow();
 }
 
 // ── Projects ──────────────────────────────────────────────────────────────────
@@ -357,7 +599,7 @@ void MainWindow::loadProjects() {
         cards_.append(card);
     }
 
-    historyWidget_->setProjects(projects);
+    if (historyWidget_) historyWidget_->setProjects(projects);
 
     if (projects.isEmpty()) {
         auto* empty = new QWidget(cardsContainer_);
@@ -377,6 +619,8 @@ void MainWindow::loadProjects() {
         vl->addWidget(emptyLabel2_);
         layout->addWidget(empty);
     }
+
+    updateTrayMenu();
 }
 
 ProjectCardWidget* MainWindow::cardForProject(qint64 projectId) {
@@ -416,6 +660,7 @@ void MainWindow::onSessionStarted(qint64 projectId, qint64) {
     }
     timerDisplay_->setElapsed(0);
     stopBtn_->setEnabled(true);
+    updateTrayMenu();
 }
 
 void MainWindow::onSessionStopped(qint64, qint64, qint64) {
@@ -424,6 +669,7 @@ void MainWindow::onSessionStopped(qint64, qint64, qint64) {
     stopBtn_->setEnabled(false);
     refreshCardDurations();
     if (stack_->currentIndex() == 1) historyWidget_->refresh();
+    updateTrayMenu();
 }
 
 void MainWindow::onTimerTick(qint64 secs) { timerDisplay_->setElapsed(secs); }
@@ -432,12 +678,22 @@ void MainWindow::switchToProjectsPage() {
     stack_->setCurrentIndex(0);
     navProjects_->setChecked(true);
     navHistory_->setChecked(false);
+    navSettings_->setChecked(false);
     refreshCardDurations();
+    updateTrayMenu();
 }
 
 void MainWindow::switchToHistoryPage() {
     stack_->setCurrentIndex(1);
     navProjects_->setChecked(false);
     navHistory_->setChecked(true);
+    navSettings_->setChecked(false);
     historyWidget_->refresh();
+}
+
+void MainWindow::switchToSettingsPage() {
+    stack_->setCurrentIndex(2);
+    navProjects_->setChecked(false);
+    navHistory_->setChecked(false);
+    navSettings_->setChecked(true);
 }

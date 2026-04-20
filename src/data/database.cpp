@@ -116,17 +116,25 @@ bool Database::updateProject(const Project& p) {
 }
 
 qint64 Database::totalSecsToday(qint64 projectId) {
+    // Compute "today" in the app timezone by shifting the current local time
+    int     sysOffsetSecs = QDateTime::currentDateTime().offsetFromUtc();
+    int     adjSecs       = tzOffsetSecs_ - sysOffsetSecs;
+    QString today         = QDateTime::currentDateTime().addSecs(adjSecs).date().toString(Qt::ISODate);
+
+    // Shift stored local times by the same amount before comparing dates
+    QString adjStr = (adjSecs >= 0) ? QString("+%1 seconds").arg(adjSecs)
+                                    : QString("%1 seconds").arg(adjSecs);
+
     QSqlQuery q(db_);
-    QString   today = QDate::currentDate().toString(Qt::ISODate);
-    q.prepare(R"(
-        SELECT COALESCE(SUM(
-            strftime('%s', COALESCE(end_time, datetime('now'))) -
-            strftime('%s', start_time)
-        ), 0)
-        FROM time_entries
-        WHERE project_id = ? AND date(start_time) = ?
-    )");
+    q.prepare(
+        "SELECT COALESCE(SUM("
+        "  strftime('%s', COALESCE(end_time, datetime('now', 'localtime'))) -"
+        "  strftime('%s', start_time)"
+        "), 0)"
+        " FROM time_entries"
+        " WHERE project_id = ? AND date(start_time, ?) = ?");
     q.addBindValue(projectId);
+    q.addBindValue(adjStr);
     q.addBindValue(today);
     q.exec();
     return q.next() ? q.value(0).toLongLong() : 0;

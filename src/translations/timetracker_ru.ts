@@ -5,10 +5,18 @@
     <name>MainWindow</name>
     <message><source>Projects</source><translation>Проекты</translation></message>
     <message><source>History</source><translation>История</translation></message>
+    <message><source>Settings</source><translation>Настройки</translation></message>
     <message><source>■  Stop</source><translation>■  Стоп</translation></message>
     <message><source>+ New Project</source><translation>+ Новый проект</translation></message>
     <message><source>No projects</source><translation>Нет проектов</translation></message>
     <message><source>Click &apos;+ New Project&apos; to get started</source><translation>Нажмите «+ Новый проект» чтобы начать</translation></message>
+    <message><source>BEHAVIOR</source><translation>ПОВЕДЕНИЕ</translation></message>
+    <message><source>Minimize to system tray</source><translation>Сворачивать в системный трей</translation></message>
+    <message><source>TIMEZONE</source><translation>ВРЕМЕННАЯ ЗОНА</translation></message>
+    <message><source>No active project</source><translation>Нет активного проекта</translation></message>
+    <message><source>Hide window</source><translation>Скрыть окно</translation></message>
+    <message><source>Show window</source><translation>Показать окно</translation></message>
+    <message><source>Quit</source><translation>Выход</translation></message>
 </context>
 <context>
     <name>ProjectCardWidget</name>

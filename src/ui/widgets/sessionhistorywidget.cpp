@@ -87,6 +87,10 @@ void SessionHistoryWidget::setProjects(const QList<Project>& projects) {
     refresh();
 }
 
+void SessionHistoryWidget::setTimezoneOffsetSecs(int secs) {
+    tzOffsetSecs_ = secs;
+}
+
 void SessionHistoryWidget::refresh() {
     qint64 filterId = filterCombo_->currentData().toLongLong();
     QList<TimeEntry> entries = (filterId > 0)
@@ -99,6 +103,10 @@ void SessionHistoryWidget::refresh() {
         colorMap[p.id] = p.color;
     }
 
+    // Shift stored local times into the selected timezone
+    int sysOffsetSecs = QDateTime::currentDateTime().offsetFromUtc();
+    int adjSecs       = tzOffsetSecs_ - sysOffsetSecs;
+
     table_->setRowCount(0);
     for (const auto& e : entries) {
         int row = table_->rowCount();
@@ -107,11 +115,14 @@ void SessionHistoryWidget::refresh() {
         auto* nameItem = new QTableWidgetItem(nameMap.value(e.projectId, "?"));
         nameItem->setForeground(QColor(colorMap.value(e.projectId, "#4DABF7")));
         table_->setItem(row, 0, nameItem);
-        table_->setItem(row, 1, new QTableWidgetItem(e.startTime.date().toString("dd MMM yyyy")));
-        table_->setItem(row, 2, new QTableWidgetItem(e.startTime.time().toString("HH:mm:ss")));
+
+        QDateTime startAdj = e.startTime.addSecs(adjSecs);
+        table_->setItem(row, 1, new QTableWidgetItem(startAdj.date().toString("dd MMM yyyy")));
+        table_->setItem(row, 2, new QTableWidgetItem(startAdj.time().toString("HH:mm:ss")));
 
         if (e.endTime.isValid()) {
-            table_->setItem(row, 3, new QTableWidgetItem(e.endTime.time().toString("HH:mm:ss")));
+            QDateTime endAdj = e.endTime.addSecs(adjSecs);
+            table_->setItem(row, 3, new QTableWidgetItem(endAdj.time().toString("HH:mm:ss")));
             table_->setItem(row, 4, new QTableWidgetItem(fmtDuration(e.durationSecs())));
         } else {
             auto* ri = new QTableWidgetItem(tr("Running…"));

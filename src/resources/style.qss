@@ -384,3 +384,69 @@ QPushButton#colorSwatch:checked {
     font-size: 12px;
     background: transparent;
 }
+
+/* ── Settings page ───────────────────────────────────────────────────────── */
+#settingsTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #C1C2C5;
+    background: transparent;
+}
+
+#settingsSectionLabel {
+    font-size: 11px;
+    font-weight: 600;
+    color: #606080;
+    letter-spacing: 1.5px;
+    background: transparent;
+    padding-bottom: 4px;
+}
+
+QFrame#settingsSep {
+    background-color: #2E2E48;
+    max-height: 1px;
+    border: none;
+}
+
+QCheckBox#settingsCheck {
+    color: #C1C2C5;
+    font-size: 13px;
+    spacing: 10px;
+    background: transparent;
+}
+QCheckBox#settingsCheck::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid #3A3A55;
+    background-color: #252538;
+}
+QCheckBox#settingsCheck::indicator:hover  { border-color: #4DABF7; }
+QCheckBox#settingsCheck::indicator:checked {
+    background-color: #4DABF7;
+    border-color: #4DABF7;
+}
+
+QComboBox#tzCombo {
+    background-color: #252538;
+    border: 1px solid #2E2E48;
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: #C1C2C5;
+}
+QComboBox#tzCombo:focus { border-color: #4DABF7; }
+QComboBox#tzCombo::drop-down { border: none; width: 20px; }
+QComboBox#tzCombo::down-arrow {
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #606080;
+    width: 0; height: 0;
+    margin-right: 6px;
+}
+QComboBox#tzCombo QAbstractItemView {
+    background-color: #252538;
+    border: 1px solid #2E2E48;
+    selection-background-color: #2D2D50;
+    color: #C1C2C5;
+    outline: none;
+}

@@ -16,6 +16,8 @@ public:
     bool           deleteProject(qint64 id);
     bool           updateProject(const Project& p);
     qint64         totalSecsToday(qint64 projectId);
+    void           setTimezoneOffsetSecs(int secs) { tzOffsetSecs_ = secs; }
+    int            timezoneOffsetSecs() const      { return tzOffsetSecs_; }
 
     QList<TimeEntry> entriesForProject(qint64 projectId, int limit = 100);
     QList<TimeEntry> recentEntries(int limit = 200);
@@ -28,4 +30,5 @@ private:
     TimeEntry   rowToEntry(QSqlQuery& q);
     Project     rowToProject(QSqlQuery& q);
     QSqlDatabase db_;
+    int          tzOffsetSecs_{3 * 3600};
 };

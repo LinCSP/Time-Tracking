@@ -12,6 +12,7 @@ public:
     explicit SessionHistoryWidget(Database* db, QWidget* parent = nullptr);
     void refresh();
     void setProjects(const QList<struct Project>& projects);
+    void setTimezoneOffsetSecs(int secs);
 
 protected:
     void changeEvent(QEvent* event) override;
@@ -24,4 +25,5 @@ private:
     QTableWidget* table_;
     QComboBox*    filterCombo_;
     QLabel*       titleLabel_;
+    int           tzOffsetSecs_{3 * 3600};
 };
