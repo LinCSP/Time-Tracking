@@ -225,22 +225,26 @@ void MainWindow::buildUi() {
     hl->addSpacing(12);
 
     // Window controls
-    auto* winClose = new QPushButton("", headerBar_);
-    winClose->setObjectName("winClose");
-    winClose->setFixedSize(14, 14);
-    winClose->setCursor(Qt::PointingHandCursor);
+    auto makeWinBtn = [&](const char* name, const QString& color) {
+        auto* btn = new QPushButton("", headerBar_);
+        btn->setObjectName(name);
+        btn->setFixedSize(14, 14);
+        btn->setFlat(true);
+        btn->setCursor(Qt::PointingHandCursor);
+        btn->setStyleSheet(QString(
+            "QPushButton { background-color:%1; border-radius:7px; border:none; padding:0; }"
+            "QPushButton:hover { background-color:%1; opacity:0.8; }"
+        ).arg(color));
+        return btn;
+    };
+
+    auto* winClose = makeWinBtn("winClose", "#FF5F57");
     connect(winClose, &QPushButton::clicked, this, &QMainWindow::close);
 
-    auto* winMin = new QPushButton("", headerBar_);
-    winMin->setObjectName("winMinimize");
-    winMin->setFixedSize(14, 14);
-    winMin->setCursor(Qt::PointingHandCursor);
+    auto* winMin = makeWinBtn("winMinimize", "#FEBC2E");
     connect(winMin, &QPushButton::clicked, this, &QMainWindow::showMinimized);
 
-    auto* winMax = new QPushButton("", headerBar_);
-    winMax->setObjectName("winMaximize");
-    winMax->setFixedSize(14, 14);
-    winMax->setCursor(Qt::PointingHandCursor);
+    auto* winMax = makeWinBtn("winMaximize", "#28C840");
     connect(winMax, &QPushButton::clicked, this, [this]() {
         isMaximized() ? showNormal() : showMaximized();
     });
