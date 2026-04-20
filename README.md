@@ -15,9 +15,7 @@ A minimalist work time tracking app built with Qt6 and a dark theme.
 
 ## Screenshots
 
-| Projects | History |
-|----------|---------|
-| Dark theme with color-coded project cards | Session table with project filter |
+![Time Tracker — Projects](pic/screen.png)
 
 ## Build
 
