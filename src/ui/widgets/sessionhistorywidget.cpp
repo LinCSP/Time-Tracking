@@ -2,6 +2,7 @@
 #include "data/database.h"
 #include "data/models.h"
 #include <QComboBox>
+#include <QEvent>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -10,9 +11,7 @@
 
 static QString fmtDuration(qint64 secs) {
     if (secs <= 0) return "–";
-    qint64 h = secs / 3600;
-    qint64 m = (secs % 3600) / 60;
-    qint64 s = secs % 60;
+    qint64 h = secs / 3600, m = (secs % 3600) / 60, s = secs % 60;
     if (h > 0) return QString("%1h %2m").arg(h).arg(m);
     if (m > 0) return QString("%1m %2s").arg(m).arg(s);
     return QString("%1s").arg(s);
@@ -28,26 +27,24 @@ void SessionHistoryWidget::buildUi() {
     root->setContentsMargins(16, 12, 16, 16);
     root->setSpacing(12);
 
-    // Toolbar
     auto* toolRow = new QHBoxLayout();
     toolRow->setSpacing(12);
 
-    auto* titleLabel = new QLabel("Session History", this);
-    titleLabel->setStyleSheet("font-size: 15px; font-weight: bold; color: #C1C2C5;");
+    titleLabel_ = new QLabel(tr("Session History"), this);
+    titleLabel_->setStyleSheet("font-size: 15px; font-weight: bold; color: #C1C2C5;");
 
     filterCombo_ = new QComboBox(this);
-    filterCombo_->addItem("All Projects", -1LL);
+    filterCombo_->addItem(tr("All Projects"), -1LL);
     filterCombo_->setMinimumHeight(32);
     connect(filterCombo_, &QComboBox::currentIndexChanged, this, &SessionHistoryWidget::refresh);
 
-    toolRow->addWidget(titleLabel);
+    toolRow->addWidget(titleLabel_);
     toolRow->addStretch();
     toolRow->addWidget(filterCombo_);
     root->addLayout(toolRow);
 
-    // Table
     table_ = new QTableWidget(0, 5, this);
-    table_->setHorizontalHeaderLabels({"Project", "Date", "Start", "End", "Duration"});
+    retranslateUi();
     table_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     table_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     table_->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -61,6 +58,22 @@ void SessionHistoryWidget::buildUi() {
     root->addWidget(table_);
 }
 
+void SessionHistoryWidget::retranslateUi() {
+    titleLabel_->setText(tr("Session History"));
+    table_->setHorizontalHeaderLabels({
+        tr("Project"), tr("Date"), tr("Start"), tr("End"), tr("Duration")
+    });
+    // Update combo first item text
+    if (filterCombo_->count() > 0)
+        filterCombo_->setItemText(0, tr("All Projects"));
+}
+
+void SessionHistoryWidget::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange)
+        retranslateUi();
+    QWidget::changeEvent(event);
+}
+
 void SessionHistoryWidget::setProjects(const QList<Project>& projects) {
     qint64 currentId = filterCombo_->currentData().toLongLong();
     filterCombo_->blockSignals(true);
@@ -68,7 +81,6 @@ void SessionHistoryWidget::setProjects(const QList<Project>& projects) {
         filterCombo_->removeItem(1);
     for (const auto& p : projects)
         filterCombo_->addItem(p.name, p.id);
-    // Restore selection
     int idx = filterCombo_->findData(currentId);
     if (idx >= 0) filterCombo_->setCurrentIndex(idx);
     filterCombo_->blockSignals(false);
@@ -77,19 +89,12 @@ void SessionHistoryWidget::setProjects(const QList<Project>& projects) {
 
 void SessionHistoryWidget::refresh() {
     qint64 filterId = filterCombo_->currentData().toLongLong();
+    QList<TimeEntry> entries = (filterId > 0)
+        ? db_->entriesForProject(filterId, 200)
+        : db_->recentEntries(200);
 
-    QList<TimeEntry> entries;
-    QList<Project>   projects = db_->allProjects();
-
-    if (filterId > 0)
-        entries = db_->entriesForProject(filterId, 200);
-    else
-        entries = db_->recentEntries(200);
-
-    // Build project name map
-    QHash<qint64, QString> nameMap;
-    QHash<qint64, QString> colorMap;
-    for (const auto& p : projects) {
+    QHash<qint64, QString> nameMap, colorMap;
+    for (const auto& p : db_->allProjects()) {
         nameMap[p.id]  = p.name;
         colorMap[p.id] = p.color;
     }
@@ -99,13 +104,9 @@ void SessionHistoryWidget::refresh() {
         int row = table_->rowCount();
         table_->insertRow(row);
 
-        // Color dot + project name
-        QString pName = nameMap.value(e.projectId, "Unknown");
-        QString color = colorMap.value(e.projectId, "#4DABF7");
-        auto*   nameItem = new QTableWidgetItem(pName);
-        nameItem->setForeground(QColor(color));
+        auto* nameItem = new QTableWidgetItem(nameMap.value(e.projectId, "?"));
+        nameItem->setForeground(QColor(colorMap.value(e.projectId, "#4DABF7")));
         table_->setItem(row, 0, nameItem);
-
         table_->setItem(row, 1, new QTableWidgetItem(e.startTime.date().toString("dd MMM yyyy")));
         table_->setItem(row, 2, new QTableWidgetItem(e.startTime.time().toString("HH:mm:ss")));
 
@@ -113,13 +114,12 @@ void SessionHistoryWidget::refresh() {
             table_->setItem(row, 3, new QTableWidgetItem(e.endTime.time().toString("HH:mm:ss")));
             table_->setItem(row, 4, new QTableWidgetItem(fmtDuration(e.durationSecs())));
         } else {
-            auto* runItem = new QTableWidgetItem("Running…");
-            runItem->setForeground(QColor("#69DB7C"));
-            table_->setItem(row, 3, runItem);
-            qint64 elapsed = e.startTime.secsTo(QDateTime::currentDateTime());
-            table_->setItem(row, 4, new QTableWidgetItem(fmtDuration(elapsed)));
+            auto* ri = new QTableWidgetItem(tr("Running…"));
+            ri->setForeground(QColor("#69DB7C"));
+            table_->setItem(row, 3, ri);
+            table_->setItem(row, 4, new QTableWidgetItem(
+                fmtDuration(e.startTime.secsTo(QDateTime::currentDateTime()))));
         }
-
         table_->setRowHeight(row, 36);
     }
 }

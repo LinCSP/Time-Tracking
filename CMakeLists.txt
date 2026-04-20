@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Sql)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Sql LinguistTools)
 
 set(SOURCES
     src/main.cpp
@@ -25,6 +25,7 @@ qt_add_executable(time_tracking ${SOURCES})
 
 qt_add_resources(time_tracking "resources"
     PREFIX "/"
+    BASE_DIRS src/resources
     FILES src/resources/style.qss
 )
 
@@ -33,5 +34,11 @@ target_include_directories(time_tracking PRIVATE src)
 target_link_libraries(time_tracking PRIVATE
     Qt6::Widgets
     Qt6::Sql
+)
+
+qt6_add_translations(time_tracking
+    TS_FILES src/translations/timetracker_ru.ts
+    RESOURCE_PREFIX "/translations"
+    NO_GENERATE_LUPDATE_TARGET
 )
 

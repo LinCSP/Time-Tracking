@@ -5,18 +5,21 @@
 #include "widgets/projectcardwidget.h"
 #include "widgets/sessionhistorywidget.h"
 #include "widgets/timerdisplay.h"
+#include <QApplication>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QMessageBox>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QStackedWidget>
-#include <QVBoxLayout>
-
-// ── Simple flow layout (no external dep) ────────────────────────────────────
-#include <QLayout>
 #include <QStyle>
+#include <QTranslator>
+#include <QVBoxLayout>
+#include <QWindow>
+
+// ── FlowLayout ───────────────────────────────────────────────────────────────
+#include <QLayout>
 #include <QWidgetItem>
 
 class FlowLayout : public QLayout {
@@ -25,46 +28,39 @@ public:
         : QLayout(parent), hSpace_(hSpacing), vSpace_(vSpacing) {}
     ~FlowLayout() override { QLayoutItem* item; while ((item = takeAt(0))) delete item; }
 
-    void addItem(QLayoutItem* item) override { items_.append(item); }
-    int  count() const override { return items_.size(); }
+    void         addItem(QLayoutItem* item) override { items_.append(item); }
+    int          count() const override { return items_.size(); }
     QLayoutItem* itemAt(int idx) const override { return items_.value(idx); }
     QLayoutItem* takeAt(int idx) override {
         return (idx >= 0 && idx < items_.size()) ? items_.takeAt(idx) : nullptr;
     }
     Qt::Orientations expandingDirections() const override { return {}; }
-    bool hasHeightForWidth() const override { return true; }
-    int  heightForWidth(int width) const override { return doLayout(QRect(0, 0, width, 0), true); }
-    QSize sizeHint() const override { return minimumSize(); }
-    QSize minimumSize() const override {
+    bool             hasHeightForWidth() const override { return true; }
+    int              heightForWidth(int w) const override { return doLayout(QRect(0, 0, w, 0), true); }
+    QSize            sizeHint() const override { return minimumSize(); }
+    QSize            minimumSize() const override {
         QSize sz;
         for (auto* item : items_) sz = sz.expandedTo(item->minimumSize());
-        const auto margins = contentsMargins();
-        return sz + QSize(margins.left() + margins.right(), margins.top() + margins.bottom());
+        auto m = contentsMargins();
+        return sz + QSize(m.left() + m.right(), m.top() + m.bottom());
     }
-    void setGeometry(const QRect& rect) override {
-        QLayout::setGeometry(rect);
-        doLayout(rect, false);
-    }
+    void setGeometry(const QRect& rect) override { QLayout::setGeometry(rect); doLayout(rect, false); }
 
 private:
     int doLayout(const QRect& rect, bool testOnly) const {
-        auto margins = contentsMargins();
-        QRect effective = rect.adjusted(margins.left(), margins.top(), -margins.right(), -margins.bottom());
-        int x = effective.x(), y = effective.y(), lineH = 0;
-
+        auto  m = contentsMargins();
+        QRect eff = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom());
+        int   x = eff.x(), y = eff.y(), lineH = 0;
         for (auto* item : items_) {
             int nextX = x + item->sizeHint().width() + hSpace_;
-            if (nextX - hSpace_ > effective.right() && lineH > 0) {
-                x = effective.x();
-                y += lineH + vSpace_;
-                nextX = x + item->sizeHint().width() + hSpace_;
-                lineH = 0;
+            if (nextX - hSpace_ > eff.right() && lineH > 0) {
+                x = eff.x(); y += lineH + vSpace_; nextX = x + item->sizeHint().width() + hSpace_; lineH = 0;
             }
             if (!testOnly) item->setGeometry(QRect(QPoint(x, y), item->sizeHint()));
             x = nextX;
             lineH = qMax(lineH, item->sizeHint().height());
         }
-        return y + lineH - rect.y() + margins.bottom();
+        return y + lineH - rect.y() + m.bottom();
     }
     QList<QLayoutItem*> items_;
     int hSpace_, vSpace_;
@@ -73,6 +69,8 @@ private:
 // ── MainWindow ───────────────────────────────────────────────────────────────
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
+    setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
+
     db_    = new Database(this);
     db_->open();
     timer_ = new TimerController(db_, this);
@@ -84,18 +82,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     buildUi();
     loadProjects();
 
-    // Restore active session display
     if (timer_->isRunning()) {
         qint64 pid = timer_->activeProjectId();
-        auto*  card = cardForProject(pid);
-        if (card) card->setActive(true);
-
-        auto projects = db_->allProjects();
-        for (const auto& p : projects) {
-            if (p.id == pid) {
-                timerDisplay_->setProjectName(p.name);
-                break;
-            }
+        if (auto* card = cardForProject(pid)) card->setActive(true);
+        for (const auto& p : db_->allProjects()) {
+            if (p.id == pid) { timerDisplay_->setProjectName(p.name); break; }
         }
         timerDisplay_->setElapsed(timer_->elapsedSecs());
         stopBtn_->setEnabled(true);
@@ -106,63 +97,171 @@ MainWindow::~MainWindow() {
     timer_->stopCurrent();
 }
 
-void MainWindow::buildUi() {
-    setWindowTitle("Time Tracker");
+// ── Language ──────────────────────────────────────────────────────────────────
 
-    auto* central = new QWidget(this);
-    setCentralWidget(central);
-    auto* rootLayout = new QVBoxLayout(central);
+void MainWindow::toggleLanguage() {
+    if (!translator_) translator_ = new QTranslator(qApp);
+
+    if (!isRussian_) {
+        if (translator_->load(":/translations/timetracker_ru.qm")) {
+            qApp->installTranslator(translator_);
+            isRussian_ = true;
+            langBtn_->setText("EN");
+        }
+    } else {
+        qApp->removeTranslator(translator_);
+        isRussian_ = false;
+        langBtn_->setText("RU");
+    }
+}
+
+void MainWindow::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange)
+        retranslateUi();
+    QMainWindow::changeEvent(event);
+}
+
+void MainWindow::retranslateUi() {
+    navProjects_->setText(tr("Projects"));
+    navHistory_->setText(tr("History"));
+    stopBtn_->setText(tr("■  Stop"));
+    addBtn_->setText(tr("+ New Project"));
+    if (emptyLabel1_) emptyLabel1_->setText(tr("No projects"));
+    if (emptyLabel2_) emptyLabel2_->setText(tr("Click '+ New Project' to get started"));
+}
+
+// ── Drag to move ──────────────────────────────────────────────────────────────
+
+bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
+    if (obj == headerBar_) {
+        if (event->type() == QEvent::MouseButtonPress) {
+            auto* me = static_cast<QMouseEvent*>(event);
+            if (me->button() == Qt::LeftButton) {
+                QWidget* child = headerBar_->childAt(me->pos());
+                if (!child || !qobject_cast<QPushButton*>(child)) {
+                    windowHandle()->startSystemMove();
+                    return true;
+                }
+            }
+        } else if (event->type() == QEvent::MouseButtonDblClick) {
+            auto* me = static_cast<QMouseEvent*>(event);
+            if (me->button() == Qt::LeftButton) {
+                QWidget* child = headerBar_->childAt(me->pos());
+                if (!child || !qobject_cast<QPushButton*>(child)) {
+                    isMaximized() ? showNormal() : showMaximized();
+                    return true;
+                }
+            }
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
+}
+
+// ── UI Build ──────────────────────────────────────────────────────────────────
+
+void MainWindow::buildUi() {
+    auto* outer = new QFrame(this);
+    outer->setObjectName("outerFrame");
+    setCentralWidget(outer);
+
+    auto* rootLayout = new QVBoxLayout(outer);
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
-    // ── Header bar ────────────────────────────────────────────────────────
-    auto* header = new QFrame(this);
-    header->setObjectName("headerBar");
-    auto* headerLayout = new QHBoxLayout(header);
-    headerLayout->setContentsMargins(20, 0, 20, 0);
-    headerLayout->setSpacing(0);
+    // ── Header ────────────────────────────────────────────────────────────
+    headerBar_ = new QFrame(outer);
+    headerBar_->setObjectName("headerBar");
+    headerBar_->setCursor(Qt::SizeAllCursor);
+    headerBar_->installEventFilter(this);
 
-    auto* appTitle = new QLabel("⏱ Time Tracker", header);
+    auto* hl = new QHBoxLayout(headerBar_);
+    hl->setContentsMargins(16, 0, 12, 0);
+    hl->setSpacing(0);
+
+    auto* appTitle = new QLabel("⏱  Time Tracker", headerBar_);
     appTitle->setObjectName("appTitle");
-    headerLayout->addWidget(appTitle);
+    appTitle->setCursor(Qt::SizeAllCursor);
+    hl->addWidget(appTitle);
+    hl->addSpacing(20);
 
-    headerLayout->addSpacing(32);
-
-    // Nav buttons
-    navProjects_ = new QPushButton("Projects", header);
+    navProjects_ = new QPushButton(tr("Projects"), headerBar_);
     navProjects_->setObjectName("navBtn");
     navProjects_->setCheckable(true);
     navProjects_->setChecked(true);
+    navProjects_->setCursor(Qt::PointingHandCursor);
     connect(navProjects_, &QPushButton::clicked, this, &MainWindow::switchToProjectsPage);
 
-    navHistory_ = new QPushButton("History", header);
+    navHistory_ = new QPushButton(tr("History"), headerBar_);
     navHistory_->setObjectName("navBtn");
     navHistory_->setCheckable(true);
+    navHistory_->setCursor(Qt::PointingHandCursor);
     connect(navHistory_, &QPushButton::clicked, this, &MainWindow::switchToHistoryPage);
 
-    headerLayout->addWidget(navProjects_);
-    headerLayout->addWidget(navHistory_);
-    headerLayout->addStretch();
+    hl->addWidget(navProjects_);
+    hl->addWidget(navHistory_);
+    hl->addStretch();
 
-    // Timer display
-    timerDisplay_ = new TimerDisplay(header);
-    timerDisplay_->setMinimumWidth(200);
-    headerLayout->addWidget(timerDisplay_);
+    timerDisplay_ = new TimerDisplay(headerBar_);
+    timerDisplay_->setMinimumWidth(180);
+    hl->addWidget(timerDisplay_);
+    hl->addSpacing(10);
 
-    headerLayout->addSpacing(12);
-
-    // Stop button
-    stopBtn_ = new QPushButton("■  Stop", header);
+    stopBtn_ = new QPushButton(tr("■  Stop"), headerBar_);
     stopBtn_->setObjectName("stopBtn");
-    stopBtn_->setFixedHeight(34);
+    stopBtn_->setFixedHeight(32);
+    stopBtn_->setCursor(Qt::PointingHandCursor);
     stopBtn_->setEnabled(false);
     connect(stopBtn_, &QPushButton::clicked, this, &MainWindow::onStopClicked);
-    headerLayout->addWidget(stopBtn_);
+    hl->addWidget(stopBtn_);
+    hl->addSpacing(12);
 
-    rootLayout->addWidget(header);
+    // Language toggle
+    langBtn_ = new QPushButton("RU", headerBar_);
+    langBtn_->setObjectName("langBtn");
+    langBtn_->setFixedSize(36, 26);
+    langBtn_->setCursor(Qt::PointingHandCursor);
+    connect(langBtn_, &QPushButton::clicked, this, &MainWindow::toggleLanguage);
+    hl->addWidget(langBtn_);
+    hl->addSpacing(12);
 
-    // ── Content stack ─────────────────────────────────────────────────────
-    stack_ = new QStackedWidget(this);
+    // Window controls
+    auto* winClose = new QPushButton("", headerBar_);
+    winClose->setObjectName("winClose");
+    winClose->setFixedSize(14, 14);
+    winClose->setCursor(Qt::PointingHandCursor);
+    connect(winClose, &QPushButton::clicked, this, &QMainWindow::close);
+
+    auto* winMin = new QPushButton("", headerBar_);
+    winMin->setObjectName("winMinimize");
+    winMin->setFixedSize(14, 14);
+    winMin->setCursor(Qt::PointingHandCursor);
+    connect(winMin, &QPushButton::clicked, this, &QMainWindow::showMinimized);
+
+    auto* winMax = new QPushButton("", headerBar_);
+    winMax->setObjectName("winMaximize");
+    winMax->setFixedSize(14, 14);
+    winMax->setCursor(Qt::PointingHandCursor);
+    connect(winMax, &QPushButton::clicked, this, [this]() {
+        isMaximized() ? showNormal() : showMaximized();
+    });
+
+    auto* wbl = new QHBoxLayout();
+    wbl->setSpacing(8);
+    wbl->setContentsMargins(0, 0, 0, 0);
+    wbl->addWidget(winMin);
+    wbl->addWidget(winMax);
+    wbl->addWidget(winClose);
+    hl->addLayout(wbl);
+
+    rootLayout->addWidget(headerBar_);
+
+    auto* sep = new QFrame(outer);
+    sep->setObjectName("headerSep");
+    sep->setFixedHeight(1);
+    rootLayout->addWidget(sep);
+
+    // ── Stack ─────────────────────────────────────────────────────────────
+    stack_ = new QStackedWidget(outer);
     rootLayout->addWidget(stack_, 1);
 
     // Page 0 — Projects
@@ -171,36 +270,34 @@ void MainWindow::buildUi() {
     projLayout->setContentsMargins(0, 0, 0, 0);
     projLayout->setSpacing(0);
 
-    // Toolbar row
-    auto* toolbar = new QWidget(projectsPage);
+    auto* toolbar  = new QWidget(projectsPage);
     toolbar->setObjectName("toolbarRow");
-    auto* tbLayout = new QHBoxLayout(toolbar);
-    tbLayout->setContentsMargins(16, 8, 16, 8);
-    tbLayout->setSpacing(12);
+    auto* tbl = new QHBoxLayout(toolbar);
+    tbl->setContentsMargins(16, 8, 16, 8);
+    tbl->setSpacing(12);
 
-    auto* addBtn = new QPushButton("+ New Project", toolbar);
-    addBtn->setObjectName("addBtn");
-    addBtn->setFixedHeight(34);
-    connect(addBtn, &QPushButton::clicked, this, &MainWindow::onAddProjectClicked);
-    tbLayout->addWidget(addBtn);
-    tbLayout->addStretch();
+    addBtn_ = new QPushButton(tr("+ New Project"), toolbar);
+    addBtn_->setObjectName("addBtn");
+    addBtn_->setFixedHeight(32);
+    addBtn_->setCursor(Qt::PointingHandCursor);
+    connect(addBtn_, &QPushButton::clicked, this, &MainWindow::onAddProjectClicked);
+    tbl->addWidget(addBtn_);
+    tbl->addStretch();
 
     projLayout->addWidget(toolbar);
 
-    // Scroll area with cards
     auto* scrollArea = new QScrollArea(projectsPage);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
 
     cardsContainer_ = new QWidget();
     cardsContainer_->setObjectName("cardsContainer");
-    auto* flowLayout = new FlowLayout(cardsContainer_, 12, 12);
+    auto* flowLayout = new FlowLayout(cardsContainer_, 14, 14);
     flowLayout->setContentsMargins(16, 16, 16, 16);
     cardsContainer_->setLayout(flowLayout);
 
     scrollArea->setWidget(cardsContainer_);
     projLayout->addWidget(scrollArea, 1);
-
     stack_->addWidget(projectsPage);
 
     // Page 1 — History
@@ -208,12 +305,16 @@ void MainWindow::buildUi() {
     stack_->addWidget(historyWidget_);
 }
 
+// ── Projects ──────────────────────────────────────────────────────────────────
+
 void MainWindow::loadProjects() {
-    // Clear old cards
+    emptyLabel1_ = nullptr;
+    emptyLabel2_ = nullptr;
+
     auto* layout = cardsContainer_->layout();
-    for (auto* c : cards_) {
-        layout->removeWidget(c);
-        c->deleteLater();
+    while (QLayoutItem* item = layout->takeAt(0)) {
+        if (QWidget* w = item->widget()) w->deleteLater();
+        delete item;
     }
     cards_.clear();
 
@@ -222,29 +323,30 @@ void MainWindow::loadProjects() {
         auto* card = new ProjectCardWidget(p, cardsContainer_);
         card->setFixedSize(240, 110);
         card->setTodayDuration(db_->totalSecsToday(p.id));
-
         connect(card, &ProjectCardWidget::clicked,         this, &MainWindow::onProjectClicked);
         connect(card, &ProjectCardWidget::deleteRequested, this, &MainWindow::onDeleteProject);
-
         layout->addWidget(card);
         cards_.append(card);
     }
 
     historyWidget_->setProjects(projects);
 
-    // Show empty state if no projects
     if (projects.isEmpty()) {
         auto* empty = new QWidget(cardsContainer_);
-        auto* vl    = new QVBoxLayout(empty);
+        empty->setFixedSize(360, 120);
+        auto* vl = new QVBoxLayout(empty);
         vl->setAlignment(Qt::AlignCenter);
-        auto* lbl1 = new QLabel("No projects yet", empty);
-        lbl1->setObjectName("emptyStateLabel");
-        lbl1->setAlignment(Qt::AlignCenter);
-        auto* lbl2 = new QLabel("Click \"+ New Project\" to get started", empty);
-        lbl2->setObjectName("emptyStateHint");
-        lbl2->setAlignment(Qt::AlignCenter);
-        vl->addWidget(lbl1);
-        vl->addWidget(lbl2);
+
+        emptyLabel1_ = new QLabel(tr("No projects"), empty);
+        emptyLabel1_->setObjectName("emptyStateLabel");
+        emptyLabel1_->setAlignment(Qt::AlignCenter);
+
+        emptyLabel2_ = new QLabel(tr("Click '+ New Project' to get started"), empty);
+        emptyLabel2_->setObjectName("emptyStateHint");
+        emptyLabel2_->setAlignment(Qt::AlignCenter);
+
+        vl->addWidget(emptyLabel1_);
+        vl->addWidget(emptyLabel2_);
         layout->addWidget(empty);
     }
 }
@@ -260,18 +362,14 @@ void MainWindow::refreshCardDurations() {
         c->setTodayDuration(db_->totalSecsToday(c->projectId()));
 }
 
-void MainWindow::onProjectClicked(qint64 projectId) {
-    timer_->startProject(projectId);
-}
+// ── Slots ─────────────────────────────────────────────────────────────────────
 
-void MainWindow::onStopClicked() {
-    timer_->stopCurrent();
-}
+void MainWindow::onProjectClicked(qint64 projectId) { timer_->startProject(projectId); }
+void MainWindow::onStopClicked()                     { timer_->stopCurrent(); }
 
 void MainWindow::onAddProjectClicked() {
     AddProjectDialog dlg(this);
     if (dlg.exec() != QDialog::Accepted) return;
-
     db_->addProject(dlg.projectName(), dlg.projectColor(), dlg.projectDescription());
     loadProjects();
 }
@@ -279,27 +377,20 @@ void MainWindow::onAddProjectClicked() {
 void MainWindow::onDeleteProject(qint64 projectId) {
     if (timer_->isRunning() && timer_->activeProjectId() == projectId)
         timer_->stopCurrent();
-
     db_->deleteProject(projectId);
     loadProjects();
 }
 
-void MainWindow::onSessionStarted(qint64 projectId, qint64 /*entryId*/) {
-    for (auto* c : cards_)
-        c->setActive(c->projectId() == projectId);
-
-    auto projects = db_->allProjects();
-    for (const auto& p : projects) {
-        if (p.id == projectId) {
-            timerDisplay_->setProjectName(p.name);
-            break;
-        }
+void MainWindow::onSessionStarted(qint64 projectId, qint64) {
+    for (auto* c : cards_) c->setActive(c->projectId() == projectId);
+    for (const auto& p : db_->allProjects()) {
+        if (p.id == projectId) { timerDisplay_->setProjectName(p.name); break; }
     }
     timerDisplay_->setElapsed(0);
     stopBtn_->setEnabled(true);
 }
 
-void MainWindow::onSessionStopped(qint64 /*projectId*/, qint64 /*entryId*/, qint64 /*dur*/) {
+void MainWindow::onSessionStopped(qint64, qint64, qint64) {
     for (auto* c : cards_) c->setActive(false);
     timerDisplay_->reset();
     stopBtn_->setEnabled(false);
@@ -307,9 +398,7 @@ void MainWindow::onSessionStopped(qint64 /*projectId*/, qint64 /*entryId*/, qint
     if (stack_->currentIndex() == 1) historyWidget_->refresh();
 }
 
-void MainWindow::onTimerTick(qint64 elapsedSecs) {
-    timerDisplay_->setElapsed(elapsedSecs);
-}
+void MainWindow::onTimerTick(qint64 secs) { timerDisplay_->setElapsed(secs); }
 
 void MainWindow::switchToProjectsPage() {
     stack_->setCurrentIndex(0);

@@ -1,7 +1,6 @@
 #pragma once
 #include "data/models.h"
 #include <QFrame>
-#include <QPropertyAnimation>
 
 class QLabel;
 class QPushButton;
@@ -22,17 +21,19 @@ signals:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
 private:
     void buildUi();
+    void retranslateUi();
     void updateStartBtn();
 
     Project     project_;
     bool        active_{false};
+    qint64      todaySecs_{0};
     QLabel*     nameLabel_;
     QLabel*     durationLabel_;
     QLabel*     dotLabel_;
     QPushButton* startBtn_;
     QPushButton* deleteBtn_;
-    QPropertyAnimation* dotAnim_;
 };
