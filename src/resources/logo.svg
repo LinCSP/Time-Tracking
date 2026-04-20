@@ -1,23 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-
-  <!-- App background -->
-  <rect width="100" height="100" rx="22" fill="#1E1E2E"/>
-
-  <!-- Crown / start button -->
-  <rect x="43" y="11" width="14" height="20" rx="6" fill="#4DABF7"/>
-
-  <!-- Watch face -->
-  <circle cx="50" cy="61" r="31" fill="#252538" stroke="#4DABF7" stroke-width="6"/>
-
-  <!-- Minute hand — 12 o'clock -->
-  <line x1="50" y1="61" x2="50" y2="38"
-        stroke="#C1C2C5" stroke-width="7" stroke-linecap="round"/>
-
-  <!-- Hour hand — ~2 o'clock (green = running) -->
-  <line x1="50" y1="61" x2="66" y2="49"
-        stroke="#69DB7C" stroke-width="6" stroke-linecap="round"/>
-
-  <!-- Center hub -->
-  <circle cx="50" cy="61" r="6" fill="#4DABF7"/>
-
+<svg version="1.1" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+ <rect width="100" height="100" rx="22" fill="#1E1E2E"/>
+ <g transform="matrix(1.3521 0 0 1.3521 -17.603 -27.581)">
+  <path d="m78 58a28 28 0 0 1-28 28 28 28 0 0 1-28-28 28 28 0 0 1 28-28 28 28 0 0 1 28 28z" fill="#252538" stop-color="#000000"/>
+  <path d="m49.956 30.448c-4.4294 0.048619-3.0266-3.8355-4.516-3.6182-15.206 2.2192-26.94 15.363-26.94 31.17 0 17.356 14.144 31.5 31.5 31.5s31.5-14.144 31.5-31.5c0-15.92-11.901-29.138-27.265-31.216-1.3856-0.1874-0.62042 3.6237-4.2794 3.6639zm0.04436 3.0519c13.572 0 24.5 10.928 24.5 24.5s-10.928 24.5-24.5 24.5-24.5-10.928-24.5-24.5 10.928-24.5 24.5-24.5z" fill="#4dabf7" stop-color="#000000"/>
+ </g>
+ <line x1="50" x2="50" y1="50.838" y2="23.797" stroke="#c1c2c5" stroke-linecap="round" stroke-width="9.4645"/>
+ <line x1="50" x2="74.337" y1="50.838" y2="50.838" stroke="#69db7c" stroke-linecap="round" stroke-width="8.1124"/>
+ <circle cx="50" cy="50.838" r="8.1124" fill="#4dabf7" stroke-width="1.3521"/>
+ <circle cx="49.752" cy="8.1657" r="4.0785" fill="#4dabf7" stroke-width="1.3521"/>
 </svg>
