@@ -39,32 +39,23 @@ QFrame#headerSep {
 }
 
 /* ── Window control buttons (macOS-style dots) ───────────────────────────── */
-QPushButton#winClose {
-    background-color: #FF5F57;
-    border: none;
-    border-radius: 7px;
-}
-QPushButton#winClose:hover {
-    background-color: #FF3B30;
-}
-
-QPushButton#winMinimize {
-    background-color: #FEBC2E;
-    border: none;
-    border-radius: 7px;
-}
-QPushButton#winMinimize:hover {
-    background-color: #F0A500;
-}
-
+QPushButton#winClose,
+QPushButton#winMinimize,
 QPushButton#winMaximize {
-    background-color: #28C840;
     border: none;
     border-radius: 7px;
+    padding: 0;
+    min-width: 14px; max-width: 14px;
+    min-height: 14px; max-height: 14px;
 }
-QPushButton#winMaximize:hover {
-    background-color: #1FAD30;
-}
+QPushButton#winClose    { background-color: #FF5F57; }
+QPushButton#winClose:hover { background-color: #FF3B30; }
+
+QPushButton#winMinimize    { background-color: #FEBC2E; }
+QPushButton#winMinimize:hover { background-color: #F0A500; }
+
+QPushButton#winMaximize    { background-color: #28C840; }
+QPushButton#winMaximize:hover { background-color: #1FAD30; }
 
 /* ── Nav buttons ─────────────────────────────────────────────────────────── */
 QPushButton#navBtn {
@@ -139,21 +130,7 @@ QWidget#toolbarRow {
     max-height: 46px;
 }
 
-/* ── Project cards ───────────────────────────────────────────────────────── */
-ProjectCardWidget {
-    background-color: #232336;
-    border: 1px solid #2C2C48;
-    border-radius: 10px;
-    border-left: 4px solid #4DABF7;
-}
-ProjectCardWidget:hover {
-    background-color: #28283E;
-    border-color: #3C3C5C;
-}
-ProjectCardWidget[active="true"] {
-    background-color: #252540;
-    border-color: #3A3A5A;
-}
+/* ── Project cards (styling is set per-widget in ProjectCardWidget::buildUi) */
 
 /* Card start button */
 QPushButton#cardStartBtn {

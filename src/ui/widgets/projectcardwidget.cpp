@@ -16,8 +16,22 @@ ProjectCardWidget::ProjectCardWidget(const Project& project, QWidget* parent)
 }
 
 void ProjectCardWidget::buildUi() {
-    // Per-card accent color — overrides the global QSS border-left
-    setStyleSheet(QString("ProjectCardWidget { border-left: 4px solid %1; }").arg(project_.color));
+    // Full per-card stylesheet: per-widget QSS completely replaces global QSS for this widget
+    setStyleSheet(QString(R"(
+        ProjectCardWidget {
+            background-color: #232336;
+            border: 1px solid #2C2C48;
+            border-left: 4px solid %1;
+        }
+        ProjectCardWidget:hover {
+            background-color: #28283E;
+            border-color: #3C3C5C;
+        }
+        ProjectCardWidget[active="true"] {
+            background-color: #252540;
+            border-color: #3A3A5A;
+        }
+    )").arg(project_.color));
 
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(16, 12, 12, 12);
