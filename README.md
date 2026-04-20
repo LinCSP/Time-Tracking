@@ -1,25 +1,27 @@
 # ⏱ Time Tracker
 
-Минималистичное приложение учёта рабочего времени на Qt6 с тёмной темой.
+A minimalist work time tracking app built with Qt6 and a dark theme.
 
-## Возможности
+[Русский](README.ru.md)
 
-- **Проекты** — добавляй проекты с цветными метками
-- **Автопереключение** — при переходе на другой проект текущий таймер останавливается автоматически
-- **История сессий** — журнал всех рабочих сессий с фильтром по проекту
-- **Персистентность** — данные хранятся в SQLite, активная сессия восстанавливается при перезапуске
-- **Мультиязычность** — English / Русский, переключение сохраняется между сеансами
-- **Кастомное окно** — frameless-окно с перетаскиванием за шапку, двойной клик — максимизировать
+## Features
 
-## Скриншоты
+- **Projects** — create projects with color-coded labels
+- **Auto-switch** — starting a new project automatically stops the current timer
+- **Session history** — full log of all work sessions with per-project filtering
+- **Persistence** — data stored in SQLite; active session is restored on restart
+- **Multilingual** — English / Russian, language preference saved between sessions
+- **Custom window** — frameless window with draggable title bar; double-click to maximize
 
-| Проекты | История |
-|---------|---------|
-| Тёмная тема с цветными карточками проектов | Таблица сессий с фильтром по проекту |
+## Screenshots
 
-## Сборка
+| Projects | History |
+|----------|---------|
+| Dark theme with color-coded project cards | Session table with project filter |
 
-### Зависимости
+## Build
+
+### Requirements
 
 - Qt 6.2+ (Widgets, Sql, LinguistTools)
 - CMake 3.16+
@@ -37,7 +39,7 @@ sudo pacman -S qt6-base cmake
 sudo apt install qt6-base-dev qt6-l10n-tools cmake
 ```
 
-### Сборка
+### Build
 
 ```bash
 git clone <repo>
@@ -47,37 +49,37 @@ cmake --build build -j$(nproc)
 ./build/bin/time_tracking
 ```
 
-## Структура проекта
+## Project Structure
 
 ```
 src/
 ├── main.cpp
 ├── data/
-│   ├── models.h              # POD-структуры Project, TimeEntry
-│   ├── database.h/.cpp       # SQLite через Qt SQL
+│   ├── models.h              # POD structs: Project, TimeEntry
+│   ├── database.h/.cpp       # SQLite via Qt SQL
 ├── core/
-│   └── timercontroller.h/.cpp  # Логика таймера, автопереключение
+│   └── timercontroller.h/.cpp  # Timer logic and auto-switching
 ├── ui/
 │   ├── mainwindow.h/.cpp
 │   ├── widgets/
-│   │   ├── projectcardwidget   # Карточка проекта с цветной полосой
-│   │   ├── timerdisplay        # HH:MM:SS в шапке
-│   │   └── sessionhistorywidget  # Таблица истории
+│   │   ├── projectcardwidget   # Project card with color accent
+│   │   ├── timerdisplay        # HH:MM:SS in the title bar
+│   │   └── sessionhistorywidget  # Session history table
 │   └── dialogs/
-│       └── addprojectdialog    # Диалог создания проекта
+│       └── addprojectdialog    # New project dialog
 └── resources/
-    └── style.qss               # Тёмная тема (Catppuccin Mocha)
+    └── style.qss               # Dark theme (Catppuccin Mocha)
 ```
 
-## Хранение данных
+## Data Storage
 
-База SQLite располагается в:
+SQLite database location:
 - **Linux**: `~/.local/share/alex/TimeTracker/timetracker.db`
 - **Windows**: `%APPDATA%\alex\TimeTracker\timetracker.db`
 
-Настройки (язык и др.):
+Settings (language etc.):
 - **Linux**: `~/.config/alex/TimeTracker.conf`
 
-## Лицензия
+## License
 
 [MIT](LICENSE)
