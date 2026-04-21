@@ -9,6 +9,7 @@ class TimerController;
 class TimerDisplay;
 class ProjectCardWidget;
 class SessionHistoryWidget;
+class AnalyticsWidget;
 class QStackedWidget;
 class QWidget;
 class QPushButton;
@@ -41,6 +42,7 @@ private slots:
     void onTimerTick(qint64 elapsedSecs);
     void switchToProjectsPage();
     void switchToHistoryPage();
+    void switchToAnalyticsPage();
     void switchToSettingsPage();
     void onLanguageChanged(int index);
     void onTrayActivated(QSystemTrayIcon::ActivationReason reason);
@@ -66,12 +68,14 @@ private:
     QPushButton*         stopBtn_;
     QPushButton*         navProjects_;
     QPushButton*         navHistory_;
+    QPushButton*         navAnalytics_;
     QPushButton*         navSettings_;
     QComboBox*           langCombo_;
     QPushButton*         addBtn_;
     QLabel*              emptyLabel1_{nullptr};
     QLabel*              emptyLabel2_{nullptr};
     SessionHistoryWidget* historyWidget_;
+    AnalyticsWidget*      analyticsWidget_{nullptr};
 
     // Settings page
     QCheckBox* minimizeToTrayCheck_{nullptr};

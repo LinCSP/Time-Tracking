@@ -1,5 +1,6 @@
 #pragma once
 #include "models.h"
+#include <QDate>
 #include <QList>
 #include <QObject>
 #include <QSqlDatabase>
@@ -19,6 +20,7 @@ public:
     void           setTimezoneOffsetSecs(int secs) { tzOffsetSecs_ = secs; }
     int            timezoneOffsetSecs() const      { return tzOffsetSecs_; }
 
+    QList<DailyEntry> dailyBreakdown(const QDate& from, const QDate& to);
     QList<TimeEntry> entriesForProject(qint64 projectId, int limit = 100);
     QList<TimeEntry> recentEntries(int limit = 200);
     TimeEntry        startSession(qint64 projectId);

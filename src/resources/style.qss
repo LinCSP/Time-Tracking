@@ -464,3 +464,71 @@ QComboBox#tzCombo QAbstractItemView {
     color: #C1C2C5;
     outline: none;
 }
+
+/* ── Analytics page ──────────────────────────────────────────────────────── */
+
+/* Range selector buttons */
+QPushButton#rangeBtn {
+    background-color: transparent;
+    border: 1px solid #2E2E48;
+    border-radius: 5px;
+    color: #606080;
+    padding: 3px 14px;
+    font-size: 12px;
+    font-weight: 500;
+}
+QPushButton#rangeBtn:hover:!checked {
+    border-color: #4DABF7;
+    color: #9090B0;
+}
+QPushButton#rangeBtn:checked {
+    background-color: #2D3A4A;
+    border-color: #4DABF7;
+    color: #4DABF7;
+}
+
+/* Export button */
+QPushButton#exportBtn {
+    background-color: transparent;
+    border: 1px solid #2E2E48;
+    border-radius: 5px;
+    color: #606080;
+    padding: 3px 14px;
+    font-size: 12px;
+}
+QPushButton#exportBtn:hover {
+    border-color: #69DB7C;
+    color: #69DB7C;
+    background-color: rgba(105, 219, 124, 0.07);
+}
+QPushButton#exportBtn:pressed {
+    background-color: rgba(105, 219, 124, 0.14);
+}
+
+/* Stat cards */
+QFrame#statCard {
+    background-color: #252538;
+    border: 1px solid #2A2A44;
+    border-radius: 8px;
+}
+
+#statValue {
+    font-size: 22px;
+    font-weight: bold;
+    color: #C1C2C5;
+    background: transparent;
+    letter-spacing: 0.3px;
+}
+
+#statDesc {
+    font-size: 11px;
+    color: #505070;
+    background: transparent;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* Chart wrap background */
+QWidget#chartWrap {
+    background-color: #1E1E2E;
+}

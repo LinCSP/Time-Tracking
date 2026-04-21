@@ -18,6 +18,7 @@ set(SOURCES
     src/ui/widgets/projectcardwidget.cpp
     src/ui/widgets/timerdisplay.cpp
     src/ui/widgets/sessionhistorywidget.cpp
+    src/ui/widgets/analyticswidget.cpp
     src/ui/dialogs/addprojectdialog.cpp
 )
 

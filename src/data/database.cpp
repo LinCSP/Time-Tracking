@@ -171,6 +171,43 @@ TimeEntry Database::activeSession() {
     return {};
 }
 
+QList<DailyEntry> Database::dailyBreakdown(const QDate& from, const QDate& to) {
+    int     sysOffsetSecs = QDateTime::currentDateTime().offsetFromUtc();
+    int     adjSecs       = tzOffsetSecs_ - sysOffsetSecs;
+    QString adjStr        = (adjSecs >= 0) ? QString("+%1 seconds").arg(adjSecs)
+                                           : QString("%1 seconds").arg(adjSecs);
+
+    QSqlQuery q(db_);
+    q.prepare(
+        "SELECT date(start_time, ?) AS day, project_id,"
+        " SUM(CAST(strftime('%s', COALESCE(end_time, datetime('now','localtime'))) AS INTEGER)"
+        "   - CAST(strftime('%s', start_time) AS INTEGER)) AS secs"
+        " FROM time_entries"
+        " WHERE date(start_time, ?) BETWEEN ? AND ?"
+        " GROUP BY day, project_id"
+        " ORDER BY day, project_id"
+    );
+    q.addBindValue(adjStr);
+    q.addBindValue(adjStr);
+    q.addBindValue(from.toString(Qt::ISODate));
+    q.addBindValue(to.toString(Qt::ISODate));
+
+    if (!q.exec()) {
+        qWarning() << "dailyBreakdown error:" << q.lastError().text();
+        return {};
+    }
+
+    QList<DailyEntry> result;
+    while (q.next()) {
+        DailyEntry e;
+        e.date      = QDate::fromString(q.value(0).toString(), Qt::ISODate);
+        e.projectId = q.value(1).toLongLong();
+        e.secs      = q.value(2).toLongLong();
+        if (e.secs > 0) result.append(e);
+    }
+    return result;
+}
+
 QList<TimeEntry> Database::entriesForProject(qint64 projectId, int limit) {
     QList<TimeEntry> list;
     QSqlQuery        q(db_);

@@ -3,6 +3,7 @@
 #include "data/database.h"
 #include "dialogs/addprojectdialog.h"
 #include "widgets/projectcardwidget.h"
+#include "widgets/analyticswidget.h"
 #include "widgets/sessionhistorywidget.h"
 #include "widgets/timerdisplay.h"
 #include <QApplication>
@@ -140,6 +141,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     if (historyWidget_)
         historyWidget_->setTimezoneOffsetSecs(tzOffset);
+    if (analyticsWidget_)
+        analyticsWidget_->setTimezoneOffsetSecs(tzOffset);
 
     if (timer_->isRunning()) {
         qint64 pid = timer_->activeProjectId();
@@ -205,6 +208,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 void MainWindow::retranslateUi() {
     navProjects_->setText(tr("Projects"));
     navHistory_->setText(tr("History"));
+    navAnalytics_->setText(tr("Analytics"));
     navSettings_->setText(tr("Settings"));
     stopBtn_->setText(tr("■  Stop"));
     addBtn_->setText(tr("+ New Project"));
@@ -284,6 +288,12 @@ void MainWindow::buildUi() {
     navHistory_->setCursor(Qt::PointingHandCursor);
     connect(navHistory_, &QPushButton::clicked, this, &MainWindow::switchToHistoryPage);
 
+    navAnalytics_ = new QPushButton(tr("Analytics"), headerBar_);
+    navAnalytics_->setObjectName("navBtn");
+    navAnalytics_->setCheckable(true);
+    navAnalytics_->setCursor(Qt::PointingHandCursor);
+    connect(navAnalytics_, &QPushButton::clicked, this, &MainWindow::switchToAnalyticsPage);
+
     navSettings_ = new QPushButton(tr("Settings"), headerBar_);
     navSettings_->setObjectName("navBtn");
     navSettings_->setCheckable(true);
@@ -292,6 +302,7 @@ void MainWindow::buildUi() {
 
     hl->addWidget(navProjects_);
     hl->addWidget(navHistory_);
+    hl->addWidget(navAnalytics_);
     hl->addWidget(navSettings_);
     hl->addStretch();
 
@@ -406,7 +417,11 @@ void MainWindow::buildUi() {
     historyWidget_ = new SessionHistoryWidget(db_, this);
     stack_->addWidget(historyWidget_);
 
-    // Page 2 — Settings
+    // Page 2 — Analytics
+    analyticsWidget_ = new AnalyticsWidget(db_, this);
+    stack_->addWidget(analyticsWidget_);
+
+    // Page 3 — Settings
     auto* settingsPage = new QWidget();
     settingsPage->setObjectName("settingsPage");
     auto* sl = new QVBoxLayout(settingsPage);
@@ -477,6 +492,9 @@ void MainWindow::buildUi() {
         if (historyWidget_) {
             historyWidget_->setTimezoneOffsetSecs(secs);
             if (stack_->currentIndex() == 1) historyWidget_->refresh();
+        }
+        if (analyticsWidget_) {
+            analyticsWidget_->setTimezoneOffsetSecs(secs);
         }
     });
 
@@ -690,6 +708,7 @@ void MainWindow::onSessionStopped(qint64, qint64, qint64) {
     stopBtn_->setEnabled(false);
     refreshCardDurations();
     if (stack_->currentIndex() == 1) historyWidget_->refresh();
+    if (stack_->currentIndex() == 2) analyticsWidget_->refresh();
     updateTrayMenu();
 }
 
@@ -699,6 +718,7 @@ void MainWindow::switchToProjectsPage() {
     stack_->setCurrentIndex(0);
     navProjects_->setChecked(true);
     navHistory_->setChecked(false);
+    navAnalytics_->setChecked(false);
     navSettings_->setChecked(false);
     refreshCardDurations();
     updateTrayMenu();
@@ -708,13 +728,24 @@ void MainWindow::switchToHistoryPage() {
     stack_->setCurrentIndex(1);
     navProjects_->setChecked(false);
     navHistory_->setChecked(true);
+    navAnalytics_->setChecked(false);
     navSettings_->setChecked(false);
     historyWidget_->refresh();
 }
 
-void MainWindow::switchToSettingsPage() {
+void MainWindow::switchToAnalyticsPage() {
     stack_->setCurrentIndex(2);
     navProjects_->setChecked(false);
     navHistory_->setChecked(false);
+    navAnalytics_->setChecked(true);
+    navSettings_->setChecked(false);
+    analyticsWidget_->refresh();
+}
+
+void MainWindow::switchToSettingsPage() {
+    stack_->setCurrentIndex(3);
+    navProjects_->setChecked(false);
+    navHistory_->setChecked(false);
+    navAnalytics_->setChecked(false);
     navSettings_->setChecked(true);
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <QDate>
 #include <QDateTime>
 #include <QString>
 
@@ -8,6 +9,12 @@ struct Project {
     QString   color;
     QString   description;
     QDateTime createdAt;
+};
+
+struct DailyEntry {
+    QDate  date;
+    qint64 projectId = -1;
+    qint64 secs      = 0;
 };
 
 struct TimeEntry {
